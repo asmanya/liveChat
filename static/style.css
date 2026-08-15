@@ -1,0 +1,245 @@
+:root {
+  --page-bg: #0a0a0a;
+  --bg: #151515;
+  --bg-composer: #1a1a1a;
+  --bubble-mine: #4f46e5;
+  --bubble-theirs: #262626;
+  --text: #e8e8e8;
+  --text-muted: #8a8a8a;
+  --tick-sent: #9a9a9a;
+  --tick-seen: #7dd3fc;
+  --border: #2c2c2c;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--page-bg);
+  color: var(--text);
+  font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+  padding: 24px;
+}
+
+.app {
+  position: relative;
+  width: 100%;
+  max-width: 640px;
+  height: min(700px, 88vh);
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.45);
+}
+
+.gate {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(10, 10, 10, 0.75);
+  backdrop-filter: blur(3px);
+}
+.gate[hidden] { display: none; }
+
+.gate-card {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 14px;
+  width: 100%;
+  max-width: 280px;
+  padding: 28px 26px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+  text-align: center;
+}
+.gate-card h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+.gate-card p { margin: 0; color: var(--text-muted); font-size: 13px; line-height: 1.4; }
+.gate-card input {
+  background: #232323;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-size: 15px;
+  letter-spacing: 1px;
+  text-align: center;
+  outline: none;
+}
+.gate-card input:focus { border-color: var(--bubble-mine); }
+.gate-card button {
+  width: 100%;
+}
+.gate-card .notice { padding: 0; margin-top: -4px; color: #f87171; font-size: 12px; }
+
+.gate-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+}
+.gate-actions button {
+  flex: 1;
+  width: auto;
+  height: auto;
+  padding: 12px 16px;
+  font-weight: 600;
+}
+
+.secondary-btn {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+.secondary-btn:hover { opacity: 1; background: #1f1f1f; }
+
+.danger-btn {
+  background: #ef4444;
+}
+.danger-btn:hover { background: #dc2626; opacity: 1; }
+
+header {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.close-btn {
+  height: auto;
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 5px 10px;
+  font-size: 12px;
+  font-weight: 500;
+}
+.close-btn:hover { color: #f87171; border-color: #f87171; opacity: 1; }
+.close-btn:disabled { opacity: 0.5; cursor: default; }
+
+#messages {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  scrollbar-width: none; /* Firefox: keep scrolling, hide the bar */
+  -ms-overflow-style: none;
+}
+#messages::-webkit-scrollbar { display: none; } /* Chrome/Safari/Edge */
+
+.notice {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 12.5px;
+  padding: 16px 10px;
+}
+
+.msg-row {
+  display: flex;
+  width: 100%;
+}
+.msg-row.mine { justify-content: flex-end; }
+.msg-row.theirs { justify-content: flex-start; }
+
+.bubble {
+  max-width: 70%;
+  padding: 9px 13px;
+  border-radius: 14px;
+  line-height: 1.4;
+}
+.mine .bubble { background: var(--bubble-mine); color: white; border-bottom-right-radius: 4px; }
+.theirs .bubble { background: var(--bubble-theirs); color: var(--text); border-bottom-left-radius: 4px; }
+
+.body { word-wrap: break-word; white-space: pre-wrap; }
+
+.meta {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 3px;
+  margin-top: 3px;
+  font-size: 10.5px;
+  color: var(--text-muted);
+}
+.mine .meta { color: rgba(255, 255, 255, 0.75); }
+
+.tick {
+  color: var(--tick-sent);
+  font-size: 10px;
+}
+.tick.seen { color: var(--tick-seen); }
+
+form {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  padding: 14px 16px;
+  background: var(--bg-composer);
+  border-top: 1px solid var(--border);
+}
+
+textarea#input {
+  flex: 1;
+  resize: none;
+  max-height: 200px; /* failsafe cap; actual 3-line limit is computed in JS */
+  overflow-y: hidden; /* JS switches this to auto only once content exceeds 3 lines */
+  background: #232323;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 14px;
+  font-family: inherit;
+  line-height: 20px; /* explicit px, not a unitless multiplier — JS reads this to size the box */
+  outline: none;
+  scrollbar-width: thin;
+  scrollbar-color: #3a3a3a transparent;
+}
+textarea#input:focus { border-color: var(--bubble-mine); }
+
+textarea#input::-webkit-scrollbar { width: 4px; }
+textarea#input::-webkit-scrollbar-track { background: transparent; }
+textarea#input::-webkit-scrollbar-thumb {
+  background: #3a3a3a;
+  border-radius: 10px;
+}
+textarea#input::-webkit-scrollbar-thumb:hover { background: #4a4a4a; }
+
+button {
+  flex: 0 0 auto;
+  height: 40px;
+  background: var(--bubble-mine);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  padding: 0 20px;
+  font-size: 14px;
+  cursor: pointer;
+}
+button:hover { opacity: 0.9; }

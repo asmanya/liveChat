@@ -1,0 +1,11 @@
+# runtime data — real chat content, seat tokens, and the passcode. Never
+# commit this: seat tokens work like passwords, and the passcode literally
+# is one.
+/data/
+
+# build artifacts
+/livechat
+*.exe
+
+# personal/local tool settings, not shared project config
+.claude/settings.local.json

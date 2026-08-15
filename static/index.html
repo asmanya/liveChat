@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Live Chat</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app">
+    <header>
+      Live Chat
+      <button type="button" id="closeBtn" class="close-btn">Close chat</button>
+    </header>
+    <div id="messages"></div>
+    <form id="form">
+      <textarea id="input" rows="1" autocomplete="off" placeholder="Type a message..."></textarea>
+      <button type="submit">Send</button>
+    </form>
+
+    <div id="gate" class="gate" hidden>
+      <form id="gateForm" class="gate-card">
+        <h2>Passcode required</h2>
+        <p>Enter the passcode to join this chat.</p>
+        <input type="password" id="gateInput" autocomplete="off" placeholder="Passcode" inputmode="text">
+        <button type="submit">Join</button>
+        <p id="gateError" class="notice" hidden></p>
+      </form>
+    </div>
+
+    <div id="closeConfirm" class="gate" hidden>
+      <div class="gate-card">
+        <h2>End this chat?</h2>
+        <p>This will permanently end the chat for both of you. This can't be undone.</p>
+        <div class="gate-actions">
+          <button type="button" id="closeCancelBtn" class="secondary-btn">Cancel</button>
+          <button type="button" id="closeConfirmBtn" class="danger-btn">End chat</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const messagesEl = document.getElementById("messages");
+    const form = document.getElementById("form");
+    const input = document.getElementById("input");
+    const closeBtn = document.getElementById("closeBtn");
+    const gate = document.getElementById("gate");
+    const gateForm = document.getElementById("gateForm");
+    const gateInput = document.getElementById("gateInput");
+    const gateError = document.getElementById("gateError");
+    const closeConfirm = document.getElementById("closeConfirm");
+    const closeCancelBtn = document.getElementById("closeCancelBtn");
+    const closeConfirmBtn = document.getElementById("closeConfirmBtn");
+
+    let myId = null;
+    let ws;
+    const myTicks = {}; // message id -> tick <span> element, for messages I sent
+
+    const savedToken = localStorage.getItem("chatToken") || "";
+    const wsScheme = location.protocol === "https:" ? "wss:" : "ws:";
+
+    // A saved token from a prior visit is enough to reconnect straight away.
+    // Without one, this browser has to prove it belongs here with the
+    // shared passcode first — see the gate form below. Tracked separately so
+    // a "denied" response can tell an actually-wrong passcode apart from a
+    // stale/reclaimed token that never sent one in the first place.
+    let sentPasscode = false;
+
+    function connect(passcodeInput) {
+      sentPasscode = !!passcodeInput;
+      const params = new URLSearchParams({ token: savedToken });
+      if (passcodeInput) params.set("passcode", passcodeInput);
+      ws = new WebSocket(`${wsScheme}//${location.host}/ws?${params}`);
+      wireSocket();
+    }
+
+    function showGate(error) {
+      gate.hidden = false;
+      if (error) {
+        gateError.textContent = error;
+        gateError.hidden = false;
+      }
+    }
+
+    function hideGate() {
+      gate.hidden = true;
+    }
+
+    gateForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const val = gateInput.value.trim();
+      if (!val) return;
+      gateError.hidden = true;
+      connect(val);
+    });
+
+    function autoResize() {
+      const style = getComputedStyle(input);
+      const lineHeight = parseFloat(style.lineHeight);
+      const vertical = parseFloat(style.paddingTop) + parseFloat(style.paddingBottom)
+        + parseFloat(style.borderTopWidth) + parseFloat(style.borderBottomWidth);
+      const maxHeight = lineHeight * 3 + vertical; // exactly 3 lines, then scroll
+
+      input.style.height = "auto";
+      const needsScroll = input.scrollHeight > maxHeight;
+      input.style.height = Math.min(input.scrollHeight, maxHeight) + "px";
+      input.style.overflowY = needsScroll ? "auto" : "hidden";
+    }
+    input.addEventListener("input", autoResize);
+    autoResize();
+
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        form.requestSubmit();
+      }
+    });
+
+    function formatTime(ts) {
+      return new Date(ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    }
+
+    function renderChatMessage(msg) {
+      const isMine = msg.sender === myId;
+
+      const row = document.createElement("div");
+      row.className = "msg-row " + (isMine ? "mine" : "theirs");
+
+      const bubble = document.createElement("div");
+      bubble.className = "bubble";
+
+      const body = document.createElement("div");
+      body.className = "body";
+      body.textContent = msg.body;
+      bubble.appendChild(body);
+
+      const meta = document.createElement("div");
+      meta.className = "meta";
+
+      const time = document.createElement("span");
+      time.textContent = formatTime(msg.ts);
+      meta.appendChild(time);
+
+      if (isMine) {
+        const tick = document.createElement("span");
+        tick.className = "tick";
+        tick.textContent = "✓";
+        meta.appendChild(tick);
+        myTicks[msg.id] = tick;
+      }
+
+      bubble.appendChild(meta);
+      row.appendChild(bubble);
+      messagesEl.appendChild(row);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+
+      if (!isMine) {
+        ws.send(JSON.stringify({ type: "seen", id: msg.id, by: myId }));
+      }
+    }
+
+    function markSeen(id) {
+      const tick = myTicks[id];
+      if (!tick) return;
+      tick.textContent = "Seen";
+      tick.classList.add("seen");
+    }
+
+    closeBtn.addEventListener("click", () => {
+      if (!ws || !myId) return;
+      closeConfirm.hidden = false;
+    });
+
+    closeCancelBtn.addEventListener("click", () => {
+      closeConfirm.hidden = true;
+    });
+
+    closeConfirmBtn.addEventListener("click", () => {
+      closeConfirm.hidden = true;
+      ws.send(JSON.stringify({ type: "close" }));
+    });
+
+    function showFull() {
+      input.disabled = true;
+      input.placeholder = "This chat already has two people";
+      form.querySelector("button").disabled = true;
+      closeBtn.disabled = true;
+
+      const notice = document.createElement("div");
+      notice.className = "notice";
+      notice.textContent = "This chat already has two people — you can't join right now.";
+      messagesEl.appendChild(notice);
+    }
+
+    function showEnded() {
+      closeConfirm.hidden = true;
+      input.disabled = true;
+      input.placeholder = "This chat has ended";
+      form.querySelector("button").disabled = true;
+      closeBtn.hidden = true;
+
+      const notice = document.createElement("div");
+      notice.className = "notice";
+      notice.textContent = "This chat has ended.";
+      messagesEl.appendChild(notice);
+    }
+
+    function wireSocket() {
+      ws.onmessage = (event) => {
+        const msg = JSON.parse(event.data);
+        if (msg.type === "welcome") {
+          hideGate();
+          myId = msg.id;
+          if (msg.token) localStorage.setItem("chatToken", msg.token);
+        } else if (msg.type === "history") {
+          (msg.messages || []).forEach(renderChatMessage);
+        } else if (msg.type === "chat") {
+          renderChatMessage(msg);
+        } else if (msg.type === "seen") {
+          markSeen(msg.id);
+        } else if (msg.type === "closed") {
+          showEnded();
+        } else if (msg.type === "full") {
+          showFull();
+        } else if (msg.type === "denied") {
+          showGate(sentPasscode
+            ? "Wrong passcode — try again."
+            : "Your saved session isn't valid anymore — enter the passcode to rejoin.");
+        }
+      };
+    }
+
+    if (savedToken) {
+      connect();
+    } else {
+      showGate();
+    }
+
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const text = input.value.trim();
+      if (!text || !myId) return;
+
+      ws.send(JSON.stringify({
+        type: "chat",
+        id: crypto.randomUUID(),
+        sender: myId,
+        body: text,
+        ts: Date.now(),
+      }));
+      input.value = "";
+      autoResize();
+    });
+  </script>
+</body>
+</html>
