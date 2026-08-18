@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <title>Live Chat</title>
 <link rel="stylesheet" href="style.css">
 </head>
@@ -66,7 +67,12 @@
     // stale/reclaimed token that never sent one in the first place.
     let sentPasscode = false;
 
+    // Guards against ever having two live sockets at once — a double-tap on
+    // "Join", or a mobile browser silently reloading/retrying mid-connect,
+    // would otherwise fire connect() twice and claim two seats for the same
+    // device before the first one's token even had a chance to save.
     function connect(passcodeInput) {
+      if (ws && ws.readyState <= WebSocket.OPEN) return;
       sentPasscode = !!passcodeInput;
       const params = new URLSearchParams({ token: savedToken });
       if (passcodeInput) params.set("passcode", passcodeInput);
@@ -76,6 +82,7 @@
 
     function showGate(error) {
       gate.hidden = false;
+      gateForm.querySelector("button").disabled = false;
       if (error) {
         gateError.textContent = error;
         gateError.hidden = false;
@@ -91,6 +98,7 @@
       const val = gateInput.value.trim();
       if (!val) return;
       gateError.hidden = true;
+      gateForm.querySelector("button").disabled = true;
       connect(val);
     });
 
